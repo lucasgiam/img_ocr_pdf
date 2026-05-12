@@ -1,0 +1,4 @@
+*.pdf
+input_imgs/
+output_pdfs/
+.DS_Store
