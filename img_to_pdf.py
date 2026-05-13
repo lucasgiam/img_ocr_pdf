@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3
 
 from pathlib import Path
 import argparse
@@ -67,16 +67,16 @@ def parse_args() -> argparse.Namespace:
         "input_img_dir",
         type=Path,
         nargs="?",
-        default=Path("input_imgs"),
-        help="Directory containing input images. Default: input_imgs/",
+        default=Path("input_image"),
+        help="Directory containing input images. Default: input_image/",
     )
 
     parser.add_argument(
         "output_pdf_path",
         type=Path,
         nargs="?",
-        default=Path("output_pdfs/output_img_only.pdf"),
-        help="Path where the output PDF should be saved. Default: output_pdfs/output_img_only.pdf",
+        default=Path("pdf_image/output.pdf"),
+        help="Path where the output PDF should be saved. Default: pdf_image/output.pdf",
     )
 
     return parser.parse_args()

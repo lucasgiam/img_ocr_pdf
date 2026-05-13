@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3
 
 from pathlib import Path
 import argparse
@@ -40,25 +40,60 @@ def run_ocrmypdf(
     subprocess.run(command, check=True)
 
 
+def collect_pdfs(input_dir: Path) -> list[Path]:
+    if not input_dir.is_dir():
+        input_dir.mkdir(parents=True, exist_ok=True)
+
+    pdfs = sorted(
+        path for path in input_dir.iterdir()
+        if path.is_file() and path.suffix.lower() == ".pdf"
+    )
+
+    if not pdfs:
+        raise FileNotFoundError(f"No PDF files found in: {input_dir}")
+
+    return pdfs
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Add OCR text layer to an image-based PDF."
+        description="Add OCR text layer to image-based PDFs."
     )
 
     parser.add_argument(
         "input_pdf_path",
         type=Path,
         nargs="?",
-        default=Path("output_pdfs/output_img_only.pdf"),
-        help="Path to the input image-based PDF. Default: output_pdfs/output_img_only.pdf",
+        default=None,
+        help=(
+            "Path to a single input PDF. "
+            "Omit to process all PDFs in pdf_image/ and write results to pdf_searchable/."
+        ),
     )
 
     parser.add_argument(
         "output_pdf_path",
         type=Path,
         nargs="?",
-        default=Path("output_pdfs/output_searchable.pdf"),
-        help="Path where the OCR PDF should be saved. Default: output_pdfs/output_searchable.pdf",
+        default=None,
+        help=(
+            "Path where the OCR PDF should be saved. "
+            "Only used when input_pdf_path is also provided."
+        ),
+    )
+
+    parser.add_argument(
+        "--input-dir",
+        type=Path,
+        default=Path("pdf_image"),
+        help="Directory of PDFs to process in batch mode. Default: pdf_image/",
+    )
+
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=Path("pdf_searchable"),
+        help="Directory where OCR PDFs are written in batch mode. Default: pdf_searchable/",
     )
 
     parser.add_argument(
@@ -97,33 +132,67 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
 
-    if not args.input_pdf_path.exists():
-        print(f"Error: input PDF does not exist: {args.input_pdf_path}", file=sys.stderr)
-        return 1
+    ocr_kwargs = dict(
+        language=args.lang,
+        deskew=not args.no_deskew,
+        rotate_pages=not args.no_rotate_pages,
+        clean=args.clean,
+        force_ocr=args.force_ocr,
+    )
 
-    try:
-        print("Running OCR...")
-        run_ocrmypdf(
-            input_pdf_path=args.input_pdf_path,
-            output_pdf_path=args.output_pdf_path,
-            language=args.lang,
-            deskew=not args.no_deskew,
-            rotate_pages=not args.no_rotate_pages,
-            clean=args.clean,
-            force_ocr=args.force_ocr,
+    # Single-file mode
+    if args.input_pdf_path is not None:
+        if not args.input_pdf_path.exists():
+            print(f"Error: input PDF does not exist: {args.input_pdf_path}", file=sys.stderr)
+            return 1
+
+        output_path = args.output_pdf_path or (
+            args.output_dir / args.input_pdf_path.name
         )
 
-        print(f"Done: {args.output_pdf_path}")
-        return 0
+        try:
+            print(f"Running OCR on {args.input_pdf_path}...")
+            run_ocrmypdf(args.input_pdf_path, output_path, **ocr_kwargs)
+            print(f"Done: {output_path}")
+            return 0
+        except subprocess.CalledProcessError as error:
+            print("Error: OCRmyPDF failed.", file=sys.stderr)
+            print(f"Exit code: {error.returncode}", file=sys.stderr)
+            return error.returncode
+        except Exception as error:
+            print(f"Error: {error}", file=sys.stderr)
+            return 1
 
-    except subprocess.CalledProcessError as error:
-        print("Error: OCRmyPDF failed.", file=sys.stderr)
-        print(f"Exit code: {error.returncode}", file=sys.stderr)
-        return error.returncode
-
-    except Exception as error:
+    # Batch mode: process all PDFs in input_dir
+    try:
+        pdf_paths = collect_pdfs(args.input_dir)
+    except FileNotFoundError as error:
         print(f"Error: {error}", file=sys.stderr)
         return 1
+
+    print(f"Found {len(pdf_paths)} PDF(s) in {args.input_dir}:")
+    for p in pdf_paths:
+        print(f"  {p.name}")
+
+    errors = 0
+    for pdf_path in pdf_paths:
+        output_path = args.output_dir / pdf_path.name
+        try:
+            print(f"\nRunning OCR on {pdf_path.name}...")
+            run_ocrmypdf(pdf_path, output_path, **ocr_kwargs)
+            print(f"Done: {output_path}")
+        except subprocess.CalledProcessError as error:
+            print(f"Error: OCRmyPDF failed on {pdf_path.name} (exit {error.returncode})", file=sys.stderr)
+            errors += 1
+        except Exception as error:
+            print(f"Error processing {pdf_path.name}: {error}", file=sys.stderr)
+            errors += 1
+
+    if errors:
+        print(f"\n{errors} file(s) failed.", file=sys.stderr)
+        return 1
+
+    return 0
 
 
 if __name__ == "__main__":

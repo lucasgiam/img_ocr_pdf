@@ -3,7 +3,7 @@
 Two small Python scripts for working with image-based PDFs:
 
 - **`img_to_pdf.py`** — Combine a folder of PNG/JPEG images into a single PDF.
-- **`ocr_pdf.py`** — Add a searchable OCR text layer to an image-based PDF.
+- **`ocr_pdf.py`** — Add a searchable OCR text layer to image-based PDFs.
 
 ---
 
@@ -60,15 +60,14 @@ Two small Python scripts for working with image-based PDFs:
 
 ## Folder structure
 
-The scripts use two folders by default — both are created automatically if they don't exist:
-
 ```
 img_ocr_pdf/
-├── input_imgs/          ← drop your images here
-└── output_pdfs/
-    ├── output_img_only.pdf      ← intermediate PDF (images only)
-    └── output_searchable.pdf    ← final searchable PDF
+├── input_image/        ← drop your images here
+├── pdf_image/          ← image-only PDFs (output of img_to_pdf.py)
+└── pdf_searchable/     ← searchable PDFs (output of ocr_pdf.py)
 ```
+
+All three folders are created automatically if they don't exist.
 
 ---
 
@@ -83,47 +82,39 @@ python img_to_pdf.py [input_image_dir] [output_pdf_path]
 ```
 
 Both arguments are optional:
-- `input_image_dir` defaults to `input_imgs/`
-- `output_pdf_path` defaults to `output_pdfs/output_img_only.pdf`
+- `input_image_dir` defaults to `input_image/`
+- `output_pdf_path` defaults to `pdf_image/output.pdf`
 
 **Examples:**
 ```bash
-# use all defaults — drop images in input_imgs/ first
+# use all defaults — drop images in input_image/ first
 python img_to_pdf.py
 
 # custom input dir, default output
 python img_to_pdf.py ./my_images
 
 # both custom
-python img_to_pdf.py ./my_images my_scan.pdf
+python img_to_pdf.py ./my_images pdf_image/my_scan.pdf
 ```
 
 **Supported formats:** `.jpg`, `.jpeg`, `.png`
 
 ---
 
-### Add OCR to a PDF — `ocr_pdf.py`
+### Add OCR to PDFs — `ocr_pdf.py`
 
-Adds a searchable text layer to an image-based PDF so the text can be copied, searched, and indexed.
+Adds a searchable text layer to image-based PDFs so the text can be copied, searched, and indexed.
+
+**Batch mode (default)** — processes every PDF in `pdf_image/` and writes results to `pdf_searchable/` using the same filenames:
+
+```bash
+python ocr_pdf.py
+```
+
+**Single-file mode** — provide an explicit input (and optionally an output) path:
 
 ```bash
 python ocr_pdf.py [input_pdf_path] [output_pdf_path] [options]
-```
-
-Both arguments are optional:
-- `input_pdf_path` defaults to `output_pdfs/output_img_only.pdf`
-- `output_pdf_path` defaults to `output_pdfs/output_searchable.pdf`
-
-**Examples:**
-```bash
-# use all defaults
-python ocr_pdf.py
-
-# custom input, default output
-python ocr_pdf.py my_scan.pdf
-
-# both custom
-python ocr_pdf.py my_scan.pdf my_final.pdf
 ```
 
 **Options:**
@@ -131,6 +122,8 @@ python ocr_pdf.py my_scan.pdf my_final.pdf
 | Flag | Description |
 |---|---|
 | `--lang <code>` | OCR language code. Default: `eng`. See [Tesseract language codes](https://tesseract-ocr.github.io/tessdoc/Data-Files-in-different-versions.html). |
+| `--input-dir <dir>` | Source directory for batch mode. Default: `pdf_image/` |
+| `--output-dir <dir>` | Destination directory for batch mode. Default: `pdf_searchable/` |
 | `--no-deskew` | Disable automatic page deskewing. |
 | `--no-rotate-pages` | Disable automatic page rotation correction. |
 | `--clean` | Clean page images before OCR (may alter appearance). |
@@ -138,14 +131,20 @@ python ocr_pdf.py my_scan.pdf my_final.pdf
 
 **Example with options:**
 ```bash
-python ocr_pdf.py output_pdfs/output_img_only.pdf output_pdfs/output_searchable.pdf --lang por --force-ocr
+python ocr_pdf.py --lang por --force-ocr
 ```
 
 ---
 
 ## Typical workflow
 
-Drop your images into `input_imgs/`, then run:
+Drop your images into `input_image/`, then run the full pipeline in one command:
+
+```bash
+./run_pipeline.sh
+```
+
+Or run each step manually:
 
 ```bash
 # Step 1: combine images into a PDF
@@ -155,10 +154,4 @@ python3 img_to_pdf.py
 python3 ocr_pdf.py
 ```
 
-Or run the full pipeline in one command:
-
-```bash
-python3 img_to_pdf.py && python3 ocr_pdf.py
-```
-
-Both output files will be in `output_pdfs/`.
+The final searchable PDFs will be in `pdf_searchable/`.

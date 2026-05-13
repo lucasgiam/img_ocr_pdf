@@ -1,4 +1,5 @@
 *.pdf
-input_imgs/
-output_pdfs/
+input_image/
+pdf_image/
+pdf_searchable/
 .DS_Store
